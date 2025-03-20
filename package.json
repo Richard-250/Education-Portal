@@ -1,0 +1,33 @@
+{
+  "name": "education-portal",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "cross-env NODE_ENV=development nodemon ./src/server.js",
+    "testdb": "cross-env NODE_ENV=test nodemon ./src/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "joi": "^17.13.3",
+    "mongodb": "^6.15.0",
+    "mongoose": "^8.12.1",
+    "nanoid": "^5.1.4",
+    "nodemailer": "^6.10.0",
+    "nodemon": "^3.1.9",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "winston": "^3.17.0"
+  },
+  "type": "module",
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
+}
