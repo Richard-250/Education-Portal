@@ -152,3 +152,90 @@ export const verifyEmail = async (req, res) => {
       }
     };
     
+    export const loginUser = async (req, res) => {
+        try {
+          const { email, password } = req.body;
+      
+          // Check if email and password exist
+          if (!email || !password) {
+            return res.status(400).json({
+              success: false,
+              message: 'Please provide email and password'
+            });
+          }
+      
+          // Find user
+          const user = await User.findOne({ email }).select('+password');
+          
+          if (!user || !(await user.comparePassword(password))) {
+            return res.status(401).json({
+              success: false,
+              message: 'Invalid credentials'
+            });
+          }
+      
+          // Check if email is verified
+          if (!user.isVerified) {
+            return res.status(401).json({
+              success: false,
+              message: 'Please verify your email before logging in'
+            });
+          }
+      
+          // If 2FA is enabled, send verification code
+          if (user.twoFactorEnabled) {
+            // Generate and save temporary token for the 2FA process
+            const tempToken = user.createTwoFactorTempToken();
+            await user.save({ validateBeforeSave: false });
+      
+            // Generate 2FA code
+            const twoFactorCode = Math.floor(100000 + Math.random() * 900000).toString();
+            const hashedCode = crypto
+              .createHash('sha256')
+              .update(twoFactorCode)
+              .digest('hex');
+      
+            // Store hashed code in Redis with 10-minute expiry
+            // redisClient.setex(`2fa_${user._id.toString()}`, 600, hashedCode);
+      
+            // Send 2FA code via email
+            await sendTwoFactorEmail({
+              email: user.email,
+              subject: 'Education Portal - Your 2FA Code',
+              firstName: user.firstName,
+              code: twoFactorCode
+            });
+      
+            return res.status(200).json({
+              success: true,
+              message: '2FA code sent to your email',
+              tempToken,
+              requiresTwoFactor: true
+            });
+          }
+      
+          // Generate token
+          const token = generateToken(user._id);
+      
+          // Update last login
+          user.lastLogin = Date.now();
+          await user.save({ validateBeforeSave: false });
+      
+          res.status(200).json({
+            success: true,
+            token,
+            user: {
+              id: user._id,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              role: user.role
+            }
+          });
+        } catch (error) {
+          next(error);
+        }
+      };
+      
+
+    
