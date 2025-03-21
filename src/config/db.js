@@ -8,7 +8,7 @@ class MongoDBConnectionManager {
   constructor(config = {}) {
     this.config = {
       // Default options
-      autoIndex: process.env.NODE_ENV === 'production' ? false : true,
+      autoIndex: process.env.NODE_ENV === 'development' ? false : true,
       serverSelectionTimeoutMS: config.serverSelectionTimeoutMS || 5000,
       socketTimeoutMS: config.socketTimeoutMS || 45000,
       family: config.family || 4,
@@ -63,7 +63,7 @@ class MongoDBConnectionManager {
       const connectionTime = Date.now() - startTime;
       logger.info(`✅ MongoDB connected successfully in ${connectionTime}ms`);
   
-      this._setupHealthCheck();
+      // this._setupHealthCheck();
 
        // ✅ Ensure stats are fetched only after connection is established
     setTimeout(async () => {
@@ -127,7 +127,7 @@ class MongoDBConnectionManager {
     });
   }
   _setupHealthCheck() {
-    const interval = this.config.healthCheckInterval ?? 30000; // Default 30 seconds
+    const interval = this.config.healthCheckInterval ?? 1000000; // Default 90 seconds
     this.healthCheckInterval = setInterval(async () => {
       try {
         const start = Date.now();

@@ -1,41 +1,44 @@
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
+import jwt from "jsonwebtoken"
 
-dotenv.config();
+export const generateToken = (userId) => {
+  return jwt.sign({ id: userId }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN
+  });
+};
 
-const generateToken = (payload, secret, expiresIn) => {
-    return jwt.sign(payload, secret, { expiresIn });
-  };
+export const verifyToken = (token) => {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (error) {
+    throw new Error('Invalid token');
+  }
+};
 
+export const generateRandomToken = (length = 32) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
   
-const generateAuthToken = (userId, userRole) => {
-    return generateToken(
-      { id: userId, role: userRole },
-      process.env.JWT_SECRET,
-      process.env.JWT_EXPIRES
-    );
-  };
-
-  const generateVerificationToken = (userId) => {
-    return generateToken(
-      { id: userId },
-      process.env.JWT_EMAIL_SECRET,
-      '24h' // Expires in 24 hours
-    );
-  };
-
-  const generateResetPasswordToken = (userId) => {
-    return generateToken(
-      { id: userId },
-      process.env.JWT_RESET_SECRET,
-      '1h' // Expires in 1 hour
-    );
-  };
-
+  for (let i = 0; i < length; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
   
-export {
-    generateToken,
-    generateAuthToken,
-    generateVerificationToken,
-    generateResetPasswordToken,
-  };
+  return token;
+};
+
+export const generateOTP = (length = 6) => {
+  const digits = '0123456789';
+  let otp = '';
+  
+  for (let i = 0; i < length; i++) {
+    otp += digits.charAt(Math.floor(Math.random() * digits.length));
+  }
+  
+  return otp;
+};
+
+export const hashToken = (token) => {
+  return Crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+};
