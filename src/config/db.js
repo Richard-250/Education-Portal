@@ -63,7 +63,7 @@ class MongoDBConnectionManager {
       const connectionTime = Date.now() - startTime;
       logger.info(`✅ MongoDB connected successfully in ${connectionTime}ms`);
   
-      // this._setupHealthCheck();
+      this._setupHealthCheck();
 
        // ✅ Ensure stats are fetched only after connection is established
     setTimeout(async () => {
