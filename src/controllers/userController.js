@@ -1,7 +1,7 @@
 import User from "../models/user.js";
 import crypto from "crypto";
-// import { generateToken, verifyToken } from "../utils/genToken.js";
-import { sendVerificationEmail } from "../service/emailService.js";
+import { generateToken } from "../utils/genToken.js";
+import { sendVerificationEmail, sendTwoFactorEmail } from "../service/emailService.js";
 import resendEmailVerification from "../utils/resendEmailVerif.js";
 
 export const registerUser = async (req, res) => {
@@ -159,21 +159,16 @@ export const verifyEmail = async (req, res) => {
           // Check if email and password exist
           if (!email || !password) {
             return res.status(400).json({
-              success: false,
-              message: 'Please provide email and password'
+               success: false, message: 'Please provide email and password'
             });
           }
-      
           // Find user
           const user = await User.findOne({ email }).select('+password');
           
           if (!user || !(await user.comparePassword(password))) {
-            return res.status(401).json({
-              success: false,
-              message: 'Invalid credentials'
+            return res.status(401).json({ success: false, message: 'Invalid credentials'
             });
           }
-      
           // Check if email is verified
           if (!user.isVerified) {
             return res.status(401).json({
@@ -181,7 +176,6 @@ export const verifyEmail = async (req, res) => {
               message: 'Please verify your email before logging in'
             });
           }
-      
           // If 2FA is enabled, send verification code
           if (user.twoFactorEnabled) {
             // Generate and save temporary token for the 2FA process
@@ -196,7 +190,7 @@ export const verifyEmail = async (req, res) => {
               .digest('hex');
       
             // Store hashed code in Redis with 10-minute expiry
-            // redisClient.setex(`2fa_${user._id.toString()}`, 600, hashedCode);
+            redisClient.setex(`2fa_${user._id.toString()}`, 600, hashedCode);
       
             // Send 2FA code via email
             await sendTwoFactorEmail({
@@ -230,12 +224,87 @@ export const verifyEmail = async (req, res) => {
               firstName: user.firstName,
               lastName: user.lastName,
               role: user.role
+            },
+            message: 'Login successfully',
+          });
+        } catch (error) {
+          console.error("Error in Login:", error);
+          res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+          });
+        }
+      };
+      
+
+      exports.verifyTwoFactor = async (req, res, next) => {
+        try {
+          const { code, tempToken } = req.body;
+      
+          if (!code || !tempToken) {
+            return res.status(400).json({
+              success: false,
+              message: 'Please provide verification code and temporary token'
+            });
+          }
+      
+          const hashedToken = crypto
+            .createHash('sha256')
+            .update(tempToken)
+            .digest('hex');
+      
+          const user = await User.findOne({
+            twoFactorTempToken: hashedToken,
+            twoFactorTempExpires: { $gt: Date.now() }
+          });
+      
+          if (!user) {
+            return res.status(400).json({
+              success: false,
+              message: 'Token is invalid or has expired'
+            });
+          }
+      
+          // Get hashed code from Redis
+          // const hashedStoredCode = await redisClient.get(`2fa_${user._id.toString()}`);
+          const hashedCode = crypto
+            .createHash('sha256')
+            .update(code)
+            .digest('hex');
+      
+          // Validate code
+          // For simplicity, using direct comparison instead of Redis in this example
+          if (hashedCode !== hashedStoredCode) {
+            return res.status(401).json({
+              success: false,
+              message: 'Invalid verification code'
+            });
+          }
+      
+          // Clear temporary token
+          user.twoFactorTempToken = undefined;
+          user.twoFactorTempExpires = undefined;
+          
+          // Update last login
+          user.lastLogin = Date.now();
+          await user.save({ validateBeforeSave: false });
+      
+          // Generate token
+          const token = generateToken(user._id);
+      
+          res.status(200).json({
+            success: true,
+            token,
+            user: {
+              id: user._id,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              role: user.role
             }
           });
         } catch (error) {
           next(error);
         }
       };
-      
-
     

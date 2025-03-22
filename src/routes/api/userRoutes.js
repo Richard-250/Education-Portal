@@ -1,6 +1,6 @@
 import { Router } from "express";
 import validateSignup from "../../validations/signup.js";
-// import validateLogin from "../../validations/login.js";
+import validateLogin from "../../validations/login.js";
 import { registerUser, verifyEmail, resendVerificationEmail, loginUser } from "../../controllers/userController.js";
 
 

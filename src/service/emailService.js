@@ -54,3 +54,26 @@ export const sendVerificationEmail = async (options) => {
       html
     });
   };
+
+  
+export const sendTwoFactorEmail = async (options) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9;">
+      <h2 style="color: #333; text-align: center; margin-bottom: 20px;">Two-Factor Authentication</h2>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">Hello ${options.firstName},</p>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">You are receiving this email because you (or someone else) has requested to log in to your account. Please use the following code to complete the authentication process:</p>
+      <div style="text-align: center; margin: 30px 0; padding: 15px; background-color: #efefef; border-radius: 4px; font-size: 24px; letter-spacing: 5px; font-weight: bold;">
+        ${options.code}
+      </div>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">This code will expire in 10 minutes.</p>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">If you didn't request this code, please ignore this email or contact support if you have concerns about your account security.</p>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">Thank you,<br>The Education Portal Team</p>
+    </div>
+  `;
+
+  return await sendEmail({
+    email: options.email,
+    subject: options.subject,
+    html
+  });
+};
