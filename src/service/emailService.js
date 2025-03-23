@@ -77,3 +77,28 @@ export const sendTwoFactorEmail = async (options) => {
     html
   });
 };
+
+
+export const sendPasswordResetEmail = async (options) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9;">
+      <h2 style="color: #333; text-align: center; margin-bottom: 20px;">Password Reset</h2>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">Hello ${options.firstName},</p>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">You are receiving this email because you (or someone else) has requested to reset the password for your account. Please click the button below to complete the process:</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${options.resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #2196F3; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">Reset Password</a>
+      </div>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">Or copy and paste this link in your browser:</p>
+      <p style="color: #666; font-size: 14px; word-break: break-all; background-color: #efefef; padding: 10px; border-radius: 4px;">${options.resetUrl}</p>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">If you didn't request this, please ignore this email and your password will remain unchanged.</p>
+      <p style="color: #e74c3c; font-size: 14px; font-weight: bold;">This link is valid for only 10 minutes.</p>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">Thank you,<br>The Education Portal Team</p>
+    </div>
+  `;
+
+  return await sendEmail({
+    email: options.email,
+    subject: options.subject,
+    html
+  });
+};

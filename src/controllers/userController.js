@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { generateToken } from "../utils/genToken.js";
 import { sendVerificationEmail, sendTwoFactorEmail } from "../service/emailService.js";
 import resendEmailVerification from "../utils/resendEmailVerif.js";
-import cacheService from "../config/casheConfig.js"; // Fixed typo in import name
+import cacheService from "../config/casheConfig.js"; 
 
 // Use the createCache function from the imported object
 const cache = cacheService.createCache(600);
@@ -249,6 +249,15 @@ export const loginUser = async (req, res) => {
   
     // Generate token for non-2FA login
     const token = generateToken(user._id);
+
+    res.cookie('tempToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development', // Fixed logic - secure in production
+      signed: true,
+      sameSite: 'strict',
+      maxAge: 100 * 60 * 1000 // 10 minutes
+    });
+    
   
     // Update last login
     user.lastLogin = Date.now();

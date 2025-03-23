@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import { mongoManager } from "./config/db.js";
 
 import allRouters from "./routes/index.js"
-
+import { CustomError } from "./middleware/errorhandler.js";
 const app = express();
 
 app.use(cors());
@@ -34,5 +34,5 @@ app.use(passport.session());
 
 
 app.use(allRouters);
-
+app.use(CustomError);
 export default app;
