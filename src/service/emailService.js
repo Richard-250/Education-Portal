@@ -102,3 +102,32 @@ export const sendPasswordResetEmail = async (options) => {
     html
   });
 };
+
+
+export const sendWelcomeEmail = async (options) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9;">
+      <h2 style="color: #333; text-align: center; margin-bottom: 20px;">Welcome to Education Portal!</h2>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">Hello ${options.firstName},</p>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">Thank you for completing your registration. We're excited to have you on board!</p>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">With Education Portal, you can:</p>
+      <ul style="color: #555; font-size: 16px; line-height: 1.5;">
+        <li>Access quality educational content</li>
+        <li>Track your learning progress</li>
+        <li>Connect with teachers and peers</li>
+        <li>Receive personalized learning recommendations</li>
+      </ul>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${options.loginUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">Get Started</a>
+      </div>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+      <p style="color: #555; font-size: 16px; line-height: 1.5;">Thank you,<br>The Education Portal Team</p>
+    </div>
+  `;
+
+  return await sendEmail({
+    email: options.email,
+    subject: options.subject || 'Welcome to Education Portal!',
+    html
+  });
+};

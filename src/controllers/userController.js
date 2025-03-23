@@ -1,7 +1,7 @@
 import User from "../models/user.js";
 import crypto from "crypto";
 import { generateToken } from "../utils/genToken.js";
-import { sendVerificationEmail, sendTwoFactorEmail } from "../service/emailService.js";
+import { sendVerificationEmail, sendTwoFactorEmail, sendWelcomeEmail } from "../service/emailService.js";
 import resendEmailVerification from "../utils/resendEmailVerif.js";
 import cacheService from "../config/casheConfig.js"; 
 
@@ -275,6 +275,16 @@ export const loginUser = async (req, res) => {
       },
       message: 'Login successful'
     });
+    
+    const loginUrl = `${req.protocol}://${req.get('host')}/login`;
+
+    await sendWelcomeEmail({
+      email: user.email,
+      subject: "Education Portal - WELCOME",
+      firstName: user.firstName,
+      loginUrl,
+    })
+
   } catch (error) {
     console.error("Error in Login:", error);
     return res.status(500).json({ 
