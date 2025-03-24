@@ -1,4 +1,5 @@
 import User from "../models/user.js";
+import logger from "../utils/logger.js";
 import crypto from "crypto";
 import { generateToken } from "../utils/genToken.js";
 import { sendVerificationEmail, sendTwoFactorEmail, sendWelcomeEmail } from "../service/emailService.js";
@@ -19,6 +20,7 @@ export const registerUser = async (req, res) => {
         message: "Please provide all required fields" 
       });
     }
+    
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -28,14 +30,8 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    const user = await User.create({
-      email, 
-      password, 
-      firstName, 
-      lastName, 
-      phoneNumber
-    });
-
+    const user = await User.create(req.body);
+    
     const verificationToken = user.createEmailVerificationToken();
     
     await user.save({ validateBeforeSave: false });

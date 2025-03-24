@@ -1,7 +1,8 @@
 import User from "../models/user.js";
 import { CustomError } from "../middleware/errorhandler.js";
 import { sendPasswordResetEmail } from "../service/emailService.js";
-import crypto from "crypto"
+import crypto from "crypto";
+
 export const enableTwoFactor =  async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id);
@@ -179,6 +180,60 @@ export const forgotPassword = async (req, res, next) => {
           createdAt: user.createdAt,
           lastLogin: user.lastLogin
         }
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+
+  export const updateUserProfile = async (req, res, next) => {
+    try {
+      const { firstName, lastName, email } = req.body;
+      
+      // Find the user
+      const user = await User.findById(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+      
+      // Check if email is being changed and if it's already in use
+      if (email && email !== user.email) {
+        const emailExists = await User.findOne({ email });
+        if (emailExists) {
+          return res.status(400).json({
+            success: false,
+            message: 'Email is already in use'
+          });
+        }
+      }
+      
+      // Update user fields if provided
+      if (firstName) user.firstName = firstName;
+      if (lastName) user.lastName = lastName;
+      if (email) user.email = email;
+      
+      // Save the updated user
+      await user.save();
+      
+      // Return updated user data
+      res.status(200).json({
+        success: true,
+        data: {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          twoFactorEnabled: user.twoFactorEnabled,
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin
+        },
+        message: 'Profile updated successfully'
       });
     } catch (error) {
       next(error);

@@ -54,18 +54,16 @@ class MongoDBConnectionManager {
       const url = this.getDbUrl();
       logger.info(`🔄 Connecting to MongoDB in ${process.env.NODE_ENV} environment...`);
   
-      this.connection = mongoose.connection; // Ensure we always use mongoose.connection
-      this._setupEventListeners(); // Attach event listeners BEFORE connecting
+      this.connection = mongoose.connection; 
+      this._setupEventListeners();
   
-      // Performance metrics tracking
       const startTime = Date.now();
-      await mongoose.connect(url, this.config); // Do NOT reassign this.connection
+      await mongoose.connect(url, this.config); 
       const connectionTime = Date.now() - startTime;
       logger.info(`✅ MongoDB connected successfully in ${connectionTime}ms`);
   
       this._setupHealthCheck();
 
-       // ✅ Ensure stats are fetched only after connection is established
     setTimeout(async () => {
       try {
         const stats = await this.getStats();
@@ -73,7 +71,7 @@ class MongoDBConnectionManager {
       } catch (err) {
         logger.error(`❌ Failed to get database stats: ${err.message}`);
       }
-    }, 1000); // Delay fetching stats by 1 second
+    }, 1000); 
 
   
       return this.connection;
