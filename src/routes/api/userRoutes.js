@@ -3,7 +3,16 @@ import validateSignup from "../../validations/signup.js";
 import validateLogin from "../../validations/login.js";
 import { authenticate, restrictTo } from "../../middleware/auth.js";
 import { registerUser, verifyEmail, resendVerificationEmail, loginUser, verifyTwoFactor } from "../../controllers/user.controller.js";
-import { enableTwoFactor, disableTwoFactor, forgotPassword, resetPassword, getCurrentUser, updateUserProfile } from "../../controllers/userBased.controller.js";
+import { enableTwoFactor, 
+    disableTwoFactor,
+    forgotPassword, 
+    resetPassword, 
+    getCurrentUser, 
+    updateUserProfile, 
+    getAllUsers, 
+    getUserById, 
+    adminUpdateUser, 
+    deleteUser } from "../../controllers/userBased.controller.js";
 
 
 
@@ -19,15 +28,15 @@ router.post('/api/auth/disable-2fa', authenticate, disableTwoFactor);
 router.post('/api/auth/forgot-password', forgotPassword);
 router.patch('/api/auth/reset-password/:token', resetPassword);
 router.get('/api/auth/me', authenticate, getCurrentUser);
-
-router.put('api/auth/profile', updateUserProfile);
+router.patch('/api/auth/profile', authenticate, updateUserProfile);
 // Admin only routes
-// router.use(authenticate)
-// router.get('/', restrictTo('admin'), getAllUsers);
-// router.route('/:id')
-//   .get(restrictTo('admin'), getUserById)
-//   .put(restrictTo('admin'), adminUpdateUser)
-//   .delete(restrictTo('admin'), deleteUser);
+
+router.use(authenticate)
+router.get('/api/auth/get-all-user', restrictTo('teacher'), getAllUsers);
+router.route('/user/:id')
+  .get(restrictTo('teacher'), getUserById)
+  .put(restrictTo('teacher'), adminUpdateUser)
+  .delete(restrictTo('teacher'), deleteUser);
 
 
 export default router;

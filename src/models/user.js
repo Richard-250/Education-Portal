@@ -39,7 +39,7 @@ const UserSchema = new mongoose.Schema({
     required: true,
     default: 'teacher'
   },
-  avatar: {
+  profilePhoto: {
     type: String,
     default: 'default-avatar.png'
   },
@@ -88,7 +88,7 @@ const UserSchema = new mongoose.Schema({
     },
     theme: {
       type: String,
-      default: 'light'
+      default: 'light',
     }
   },
 }, {

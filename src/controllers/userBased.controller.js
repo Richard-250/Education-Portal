@@ -1,7 +1,8 @@
 import User from "../models/user.js";
-import { CustomError } from "../middleware/errorhandler.js";
+import { createError, logError } from "../utils/errorhandler.js";
 import { sendPasswordResetEmail } from "../service/emailService.js";
 import crypto from "crypto";
+import logger from "../utils/logger.js";
 
 export const enableTwoFactor =  async (req, res, next) => {
     try {
@@ -27,12 +28,12 @@ export const enableTwoFactor =  async (req, res, next) => {
           success: true,
           message: 'Two-factor authentication enabled successfully'
         });
-      } catch (error) {
-        next(error);
+      } catch (err) {
+        await logError(err)
+        next(err)
       }
     };
-
-    
+  
 export const disableTwoFactor = async (req, res, next) => {
     try {
       const user = await User.findById(req.user.id);
@@ -53,10 +54,9 @@ export const disableTwoFactor = async (req, res, next) => {
         message: 'Two-factor authentication disabled successfully'
       });
     } catch (error) {
-      next(error);
+      return next(new CustomError('server error', 500, req));
     }
   };
-  
   
 export const forgotPassword = async (req, res, next) => {
     try {
@@ -108,10 +108,9 @@ export const forgotPassword = async (req, res, next) => {
         });
       }
     } catch (error) {
-      next(error);
+        return next(new CustomError('server error', 500, req));
     }
-  };
-  
+  }; 
 
   export const resetPassword = async (req, res, next) => {
     try {
@@ -152,11 +151,10 @@ export const forgotPassword = async (req, res, next) => {
         message: 'Password reset successfully'
       });
     } catch (error) {
-      next(error);
+      return next(new CustomError('server error', 500, req));
     }
   };
   
-
   export const getCurrentUser = async (req, res, next) => {
     try {
       const user = await User.findById(req.user.id);
@@ -166,6 +164,11 @@ export const forgotPassword = async (req, res, next) => {
           success: false,
           message: 'User not found'
         });
+      } else if (!user.isVerified) {
+        return res.status(400).json({
+          success: false,
+          message: 'User not verified'
+        })
       }
   
       res.status(200).json({
@@ -182,20 +185,13 @@ export const forgotPassword = async (req, res, next) => {
         }
       });
     } catch (error) {
-      next(error);
+      return next(new CustomError('server error', 500, req));
     }
   };
-
-
-
-
-
-
-
   
   export const updateUserProfile = async (req, res, next) => {
     try {
-      const { firstName, lastName, email } = req.body;
+      const { firstName, lastName, email, phoneNumber } = req.body;
       
       // Find the user
       const user = await User.findById(req.user.id);
@@ -222,6 +218,7 @@ export const forgotPassword = async (req, res, next) => {
       if (firstName) user.firstName = firstName;
       if (lastName) user.lastName = lastName;
       if (email) user.email = email;
+      if (phoneNumber) user.phoneNumber = phoneNumber;
       
       // Save the updated user
       await user.save();
@@ -242,16 +239,14 @@ export const forgotPassword = async (req, res, next) => {
         message: 'Profile updated successfully'
       });
     } catch (error) {
-      next(error);
+      return next(new CustomError('server error', 500, req));
     }
   };
 
-
-  
 export const getAllUsers = async (req, res, next) => {
   try {
-    // Check if the requesting user is an admin
-    if (req.user.role !== 'admin') {
+    // Check if the requesting user is a teacher
+    if (req.user.role !== 'teacher') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'
@@ -275,6 +270,11 @@ export const getAllUsers = async (req, res, next) => {
     if (req.query.twoFactorEnabled !== undefined) {
       filterOptions.twoFactorEnabled = req.query.twoFactorEnabled === 'true';
     }
+    //Filter by isVerified status if provided
+
+    if (req.query.isVerified !== undefined) {
+      filterOptions.isVerified = req.query.isVerified === 'true';
+    }
     
     // Search by name or email
     if (req.query.search) {
@@ -288,7 +288,7 @@ export const getAllUsers = async (req, res, next) => {
     
     // Execute query with pagination
     const users = await User.find(filterOptions)
-      .select('_id firstName lastName email role twoFactorEnabled createdAt lastLogin')
+      .select('_id firstName lastName email role twoFactorEnabled isVerified createdAt lastLogin')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -306,22 +306,23 @@ export const getAllUsers = async (req, res, next) => {
         limit
       }
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    await logError(err);
+    next(err);
   }
+  
 };
-
+ 
 
 export const getUserById = async (req, res, next) => {
   try {
     // Check if the requesting user is an admin
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'teacher') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'
       });
     }
-    
     const user = await User.findById(req.params.id)
       .select('-password');
     
@@ -337,7 +338,8 @@ export const getUserById = async (req, res, next) => {
       data: user
     });
   } catch (error) {
-    next(error);
+    console.log('error: ', error );
+    logError(error)
   }
 };
 
@@ -345,7 +347,7 @@ export const getUserById = async (req, res, next) => {
 export const adminUpdateUser = async (req, res, next) => {
   try {
     // Check if the requesting user is an admin
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'teacher') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'
@@ -408,7 +410,7 @@ export const adminUpdateUser = async (req, res, next) => {
 export const deleteUser = async (req, res, next) => {
   try {
     // Check if the requesting user is an admin
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'teacher') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'
@@ -439,6 +441,7 @@ export const deleteUser = async (req, res, next) => {
       message: 'User deleted successfully'
     });
   } catch (error) {
+    console.log('error: ', error)
     next(error);
   }
 };
@@ -446,8 +449,3 @@ export const deleteUser = async (req, res, next) => {
 
 
 
-// DELETE /api/users/:id
-//PUT /api/users/:id  adminUpdateUser
-// GET /api/users/:id getUserById
-// GET /api/users  getAllUsers
-//  PUT /api/users/profile updateUserProfile
