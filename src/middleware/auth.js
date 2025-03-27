@@ -74,7 +74,6 @@ export const authenticate = async (req, res, next) => {
     }
 };
 
-
 export const restrictTo = (...roles) => {
     return (req, res, next) => {
       // Check if user role is included in the allowed roles
@@ -89,7 +88,6 @@ export const restrictTo = (...roles) => {
     };
   };
 
-  
 export const requireTwoFactor = (req, res, next) => {
     if (!req.user.twoFactorEnabled) {
       return res.status(403).json({

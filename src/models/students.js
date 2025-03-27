@@ -12,7 +12,7 @@ const StudentSchema = new mongoose.Schema({
   grade: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
   },
   dateOfBirth: {
     type: Date,

@@ -6,7 +6,6 @@ import cookieParser from "cookie-parser";
 import { mongoManager } from "./config/db.js";
 
 import allRouters from "./routes/index.js"
-import { createError } from "./utils/errorhandler.js";
 const app = express();
 
 app.use(cors());
@@ -34,15 +33,5 @@ app.use(passport.session());
 
 
 app.use(allRouters);
-app.use(createError);
-// In your error handling middleware
-// app.use(async (err, req, res, next) => {
-//   await logError(err); // Log all errors
-  
-//   res.status(err.statusCode || 500).json({
-//     success: false,
-//     message: err.message,
-//     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-//   });
-// });
+
 export default app;

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import CloudinaryConfig from '../../config/cloudinary.js'
 import validateSignup from "../../validations/signup.js";
 import validateLogin from "../../validations/login.js";
 import { authenticate, restrictTo } from "../../middleware/auth.js";
@@ -28,9 +29,9 @@ router.post('/api/auth/disable-2fa', authenticate, disableTwoFactor);
 router.post('/api/auth/forgot-password', forgotPassword);
 router.patch('/api/auth/reset-password/:token', resetPassword);
 router.get('/api/auth/me', authenticate, getCurrentUser);
-router.patch('/api/auth/profile', authenticate, updateUserProfile);
-// Admin only routes
+router.patch('/api/auth/profile', authenticate, CloudinaryConfig.upload.single('file'), updateUserProfile);
 
+// Admin only routes
 router.use(authenticate)
 router.get('/api/auth/get-all-user', restrictTo('teacher'), getAllUsers);
 router.route('/user/:id')
