@@ -25,7 +25,8 @@ const NotificationSchema = new Schema({
       'achievement', 
       'message', 
       'assignment_due',
-      'new_comment'
+      'new_comment',
+      'comment_reply'
     ],
     required: true
   },

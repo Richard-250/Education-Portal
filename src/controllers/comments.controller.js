@@ -29,7 +29,7 @@ export const postComment = async (req, res) => {
         return res.status(403).json({ error: 'Only teachers can comment on this content' });
       }
   
-      const userNames = User.findById(user.userId)
+      const userNames = await User.findById(user.userId)
 
       // Create new comment
       const newComment = {
@@ -87,6 +87,9 @@ export const postComment = async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized - Invalid token' });
       }
   
+      const userNames = await User.findById(user.userId)
+// console.log( 'usernames:', userNames);
+// console.log( 'usernames:', userNames.firstName);
       // Find the content
       const content = await Content.findById(contentId);
       if (!content) {
@@ -122,6 +125,7 @@ export const postComment = async (req, res) => {
           title: 'New Reply to Your Comment',
           message: `${userNames.firstName}-${userNames.lastName}  replied to your comment: "${text}"`,
           contentId,
+          kind: 'comment_reply',
           recipientType: 'student'
       };
       await sendNotification('notification', commenterId, notificationData);
@@ -141,3 +145,60 @@ export const postComment = async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   };
+
+
+export const getUserNotifications = async (req, res) => {
+    try {
+      // Get user from token
+      const user = getUserFromToken(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+      }
+  
+      // Get page number from query params, default to 1
+      const page = parseInt(req.query.page) || 1;
+      const limit = 6; // Fixed limit of 6 notifications per page
+      const skip = (page - 1) * limit;
+  
+      // Get total count of notifications for pagination info
+      const totalCount = await Notification.countDocuments({
+        recipient: user.userId,
+        recipientType: user.userType.toLowerCase() // 'student' or 'teacher'
+      });
+  
+      // Get notifications sorted by newest first, with pagination
+      const notifications = await Notification.find({
+        recipient: user.userId,
+        recipientType: user.userType.toLowerCase()
+      })
+        .sort({ createdAt: -1 }) // Newest first
+        .skip(skip)
+        .limit(limit)
+        .populate('relatedContent', 'title contentType')
+        .populate('teacher', 'firstName lastName profilePhoto');
+  
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(totalCount / limit);
+      const hasNextPage = page < totalPages;
+      const hasPreviousPage = page > 1;
+  
+      res.status(200).json({
+        success: true,
+        data: notifications,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalCount,
+          hasNextPage,
+          hasPreviousPage
+        }
+      });
+  
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: error.message 
+      });
+    }
+  };
+  
