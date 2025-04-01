@@ -1,42 +1,37 @@
-import Content from '../models/content.js';
-import cloudinary from 'cloudinary';
-import { validationResult } from 'express-validator';
-import NotificationService from '../services/notificationService.js';
+import Content from "../models/content.js";
+import cloudinary from "cloudinary";
+import CloudinaryConfig from "../config/cloudinary.js";
+import { notifyStudentsNewContent } from "../service/notificationService.js";
 
 const cloudinaryV2 = cloudinary.v2;
 
-// Create a new lesson/content
 export const createContent = async (req, res) => {
   try {
-    // Validate request body
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { 
-      title, 
-      description, 
-      type, 
-      subject, 
-      grade, 
-      contentType, 
+    const {
+      title,
+      kind,
+      message,
+      description,
+      type,
+      subject,
+      grade,
+      contentType,
       tags,
-      accessibleTo
+      accessibleTo,
     } = req.body;
 
-    // Handle file upload to Cloudinary for media files
+    // Handle file upload
     let fileUrl = null;
     let cloudinaryPublicId = null;
-    if (req.file) {
-      // Check file size and type restrictions
-      if (contentType !== 'text') {
-        const uploadResult = await cloudinaryV2.uploader.upload(req.file.path, {
-          folder: 'education-portal',
-          resource_type: contentType === 'video' ? 'video' : 'auto',
-          // Add more Cloudinary upload options as needed
-        });
 
+    if (req.file) {
+      if (contentType !== "text") {
+        const uploadResult =
+          await CloudinaryConfig.CloudinaryService.uploadFile({
+            path: req.file.path,
+            mimetype: req.file.mimetype,
+            originalname: req.file.originalname,
+          });
         fileUrl = uploadResult.secure_url;
         cloudinaryPublicId = uploadResult.public_id;
       }
@@ -45,158 +40,169 @@ export const createContent = async (req, res) => {
     // Create content
     const newContent = new Content({
       title,
+      kind,
       description,
       type,
       subject,
+      message,
       grade,
       contentType,
       fileUrl,
       cloudinaryPublicId,
-      teacher: req.user._id, // Assuming authenticated teacher
+      teacher: req.user._id,
       tags: tags || [],
       isPublished: false,
-      accessibleTo: accessibleTo || 'all'
+      accessibleTo: accessibleTo || "all",
     });
 
-    // Save content
     await newContent.save();
 
-    // Notify students about new content
-    await NotificationService.notifyStudentsNewContent(newContent);
+    // Send push notification to students
+    try {
+      // await //createNotification(newContent);
+      await notifyStudentsNewContent(newContent);
+      console.log("Push notifications sent successfully");
+    } catch (notificationError) {
+      console.error(
+        "Push notification failed, but content was saved:",
+        notificationError
+      );
+      // Continue even if notifications fail
+    }
 
     res.status(201).json({
-      message: 'Content created successfully',
-      content: newContent
+      message: "Content created and notifications sent successfully",
+      content: newContent,
     });
   } catch (error) {
-    console.error('Content creation error:', error);
-    res.status(500).json({ 
-      message: 'Failed to create content', 
-      error: error.message 
+    console.error("Content creation error:", error);
+    res.status(500).json({
+      message: "Failed to create content",
+      error: error.message,
     });
   }
 };
 
-// Publish content (making it visible to students)
-export const publishContent = async (req, res) => {
-  try {
-    const { contentId } = req.params;
-    
-    // Find and update content
-    const content = await Content.findOneAndUpdate(
-      { 
-        _id: contentId, 
-        teacher: req.user._id 
-      },
-      { 
-        isPublished: true, 
-        publishedAt: new Date() 
-      },
-      { new: true }
-    );
+// // Publish content (making it visible to students)
+// export const publishContent = async (req, res) => {
+//   try {
+//     const { contentId } = req.params;
 
-    if (!content) {
-      return res.status(404).json({ 
-        message: 'Content not found or unauthorized' 
-      });
-    }
+//     // Find and update content
+//     const content = await Content.findOneAndUpdate(
+//       {
+//         _id: contentId,
+//         teacher: req.user._id
+//       },
+//       {
+//         isPublished: true,
+//         publishedAt: new Date()
+//       },
+//       { new: true }
+//     );
 
-    // Notify students about published content
-    await NotificationService.notifyStudentsContentPublished(content);
+//     if (!content) {
+//       return res.status(404).json({
+//         message: 'Content not found or unauthorized'
+//       });
+//     }
 
-    res.json({
-      message: 'Content published successfully',
-      content
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      message: 'Failed to publish content', 
-      error: error.message 
-    });
-  }
-};
+//     // Notify students about published content
+//     await NotificationService.notifyStudentsContentPublished(content);
 
-// Get content for students
-export const getStudentContent = async (req, res) => {
-  try {
-    const { subject, grade } = req.query;
+//     res.json({
+//       message: 'Content published successfully',
+//       content
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: 'Failed to publish content',
+//       error: error.message
+//     });
+//   }
+// };
 
-    // Build query for accessible content
-    const query = {
-      isPublished: true,
-      accessibleTo: { $in: ['all', 'specific'] }
-    };
+// // Get content for students
+// export const getStudentContent = async (req, res) => {
+//   try {
+//     const { subject, grade } = req.query;
 
-    if (subject) query.subject = subject;
-    if (grade) query.grade = grade;
+//     // Build query for accessible content
+//     const query = {
+//       isPublished: true,
+//       accessibleTo: { $in: ['all', 'specific'] }
+//     };
 
-    // Fetch content with minimal sensitive information
-    const contents = await Content.find(query)
-      .select('title description type subject grade contentType fileUrl')
-      .sort({ publishedAt: -1 });
+//     if (subject) query.subject = subject;
+//     if (grade) query.grade = grade;
 
-    res.json(contents);
-  } catch (error) {
-    res.status(500).json({ 
-      message: 'Failed to fetch content', 
-      error: error.message 
-    });
-  }
-};
+//     // Fetch content with minimal sensitive information
+//     const contents = await Content.find(query)
+//       .select('title description type subject grade contentType fileUrl')
+//       .sort({ publishedAt: -1 });
 
-// Get content for teachers (with more details)
-export const getTeacherContent = async (req, res) => {
-  try {
-    const contents = await Content.find({ 
-      teacher: req.user._id 
-    }).sort({ createdAt: -1 });
+//     res.json(contents);
+//   } catch (error) {
+//     res.status(500).json({
+//       message: 'Failed to fetch content',
+//       error: error.message
+//     });
+//   }
+// };
 
-    res.json(contents);
-  } catch (error) {
-    res.status(500).json({ 
-      message: 'Failed to fetch teacher content', 
-      error: error.message 
-    });
-  }
-};
+// // Get content for teachers (with more details)
+// export const getTeacherContent = async (req, res) => {
+//   try {
+//     const contents = await Content.find({
+//       teacher: req.user._id
+//     }).sort({ createdAt: -1 });
 
-// Update content details
-export const updateContent = async (req, res) => {
-  try {
-    const { contentId } = req.params;
-    const updateData = req.body;
+//     res.json(contents);
+//   } catch (error) {
+//     res.status(500).json({
+//       message: 'Failed to fetch teacher content',
+//       error: error.message
+//     });
+//   }
+// };
 
-    // Prevent changing certain fields
-    delete updateData.teacher;
-    delete updateData.isPublished;
-    delete updateData.publishedAt;
+// // Update content details
+// export const updateContent = async (req, res) => {
+//   try {
+//     const { contentId } = req.params;
+//     const updateData = req.body;
 
-    const updatedContent = await Content.findOneAndUpdate(
-      { 
-        _id: contentId, 
-        teacher: req.user._id 
-      },
-      updateData,
-      { new: true }
-    );
+//     // Prevent changing certain fields
+//     delete updateData.teacher;
+//     delete updateData.isPublished;
+//     delete updateData.publishedAt;
 
-    if (!updatedContent) {
-      return res.status(404).json({ 
-        message: 'Content not found or unauthorized' 
-      });
-    }
+//     const updatedContent = await Content.findOneAndUpdate(
+//       {
+//         _id: contentId,
+//         teacher: req.user._id
+//       },
+//       updateData,
+//       { new: true }
+//     );
 
-    // Notify students about content update
-    await NotificationService.notifyStudentsContentUpdated(updatedContent);
+//     if (!updatedContent) {
+//       return res.status(404).json({
+//         message: 'Content not found or unauthorized'
+//       });
+//     }
 
-    res.json({
-      message: 'Content updated successfully',
-      content: updatedContent
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      message: 'Failed to update content', 
-      error: error.message 
-    });
-  }
-};
+//     // Notify students about content update
+//     await NotificationService.notifyStudentsContentUpdated(updatedContent);
+
+//     res.json({
+//       message: 'Content updated successfully',
+//       content: updatedContent
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: 'Failed to update content',
+//       error: error.message
+//     });
+//   }
+// };

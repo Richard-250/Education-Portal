@@ -1,6 +1,56 @@
 import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 
+const CommentSchema = new Schema({
+  user: {
+    // type: Schema.Types.ObjectId,
+     type: mongoose.Schema.Types.ObjectId, ref: 'User',
+    // refPath: 'comments.userType',
+    required: true
+  },
+  userType: {
+    type: String,
+    // enum: ['Teacher', 'Student'],
+    // message: '{VALUE} is not a valid role',
+    required: true,
+    // set: v => v.charAt(0).toUpperCase() + v.slice(1).toLowerCase() // Capitalize first letter
+  },
+  text: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 1000
+  },
+  replies: [{
+    user: {
+      type: Schema.Types.ObjectId,
+      // refPath: 'comments.replies.userType',
+      required: true
+    },
+    userType: {
+      type: String,
+      // enum: ['Teacher', 'Student'],
+      required: true
+    },
+    text: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 1000
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  _id: true
+});
+
 const ContentSchema = new Schema({
   title: {
     type: String,
@@ -13,7 +63,7 @@ const ContentSchema = new Schema({
   },
   type: {
     type: String,
-    enum: ['lesson', 'assignment', 'quiz', 'resource'],
+    enum: ['lecture', 'assignment', 'quiz', 'resource'],
     required: true
   },
   subject: {
@@ -23,6 +73,12 @@ const ContentSchema = new Schema({
   grade: {
     type: Number,
     required: true
+  },
+  kind: {
+    type: String,
+  },
+  message: {
+    type: String,
   },
   contentType: {
     type: String,
@@ -67,6 +123,21 @@ const ContentSchema = new Schema({
   metadata: {
     type: Schema.Types.Mixed,
     default: {}
+  },
+  comments: [CommentSchema],
+  commentSettings: {
+    allowComments: {
+      type: Boolean,
+      default: true
+    },
+    requireApproval: {
+      type: Boolean,
+      default: false
+    },
+    onlyTeacherCanComment: {
+      type: Boolean,
+      default: false
+    }
   }
 }, {
   timestamps: true,
@@ -81,9 +152,16 @@ ContentSchema.virtual('isAccessible').get(function() {
          (!this.expiresAt || now < this.expiresAt);
 });
 
+// Virtual for comment count
+ContentSchema.virtual('commentCount').get(function() {
+  return this.comments ? this.comments.length : 0;
+});
+
 // Indexes for performance
 ContentSchema.index({ teacher: 1, subject: 1, grade: 1 });
 ContentSchema.index({ isPublished: 1, expiresAt: 1 });
+ContentSchema.index({ 'comments.user': 1 });
+ContentSchema.index({ 'comments.createdAt': -1 });
 
 const Content = mongoose.model('Content', ContentSchema);
 

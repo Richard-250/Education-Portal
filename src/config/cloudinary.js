@@ -49,7 +49,9 @@ const upload = multer({
       cb(new Error('Unsupported file type!'), false);
     }
   }
-});const CloudinaryService = {
+});
+
+const CloudinaryService = {
   uploadFile: async (file) => {
     try {
       const result = await cloudinary.uploader.upload(file.path, {

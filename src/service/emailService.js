@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import dotenv from "dotenv"
+import dotenv from "dotenv";
 dotenv.config();
 
 const transporter = nodemailer.createTransport({
@@ -131,3 +131,113 @@ export const sendWelcomeEmail = async (options) => {
     html
   });
 };
+
+
+
+
+
+
+
+
+// // Modified to send email notifications instead of push
+// async function sendEmailNotifications(recipients, notificationData, content) {
+//   try {
+//     const studentsWithEmails = await Student.find({
+//       _id: { $in: recipients.map(r => r._id) },
+//       email: { $exists: true, $ne: null }
+//     }).select('email firstName');
+
+//     if (studentsWithEmails.length === 0) {
+//       console.log('No valid email addresses found for notification');
+//       return;
+//     }
+
+//     // Prepare email content based on content type
+//     const emailSubject = `New ${content.type} Available: ${content.title}`;
+    
+//     const emailHtml = `
+//       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+//         <h2 style="color: #2c3e50;">New ${content.type} in ${content.subject}</h2>
+//         <h3>${content.title}</h3>
+//         <p style="font-size: 16px;">${content.description || ''}</p>
+        
+//         ${content.fileUrl ? `
+//           <div style="margin: 20px 0;">
+//             <a href="${content.fileUrl}" 
+//                style="background-color: #3498db; color: white; padding: 10px 15px; 
+//                       text-decoration: none; border-radius: 4px;">
+//               View ${content.contentType === 'video' ? 'Video' : 'Attachment'}
+//             </a>
+//           </div>
+//         ` : ''}
+        
+//         <p style="margin-top: 30px;">
+//           <a href="${process.env.FRONTEND_URL}/content/${content._id}" 
+//              style="color: #3498db; text-decoration: underline;">
+//             View in Learning Platform
+//           </a>
+//         </p>
+        
+//         <p style="margin-top: 30px; font-size: 14px; color: #7f8c8d;">
+//           You're receiving this email because you're enrolled in ${content.subject} for grade ${content.grade}.
+//         </p>
+//       </div>
+//     `;
+
+//     // Send emails
+//     await Promise.all(studentsWithEmails.map(async (student) => {
+//       const mailOptions = {
+//         from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+//         to: student.email,
+//         subject: emailSubject,
+//         html: emailHtml,
+//         text: `New ${content.type} in ${content.subject}: ${content.title}\n\n${content.description}\n\nView: ${process.env.FRONTEND_URL}/content/${content._id}`
+//       };
+
+//       try {
+//         await transporter.sendMail(mailOptions);
+//         console.log(`Notification email sent to ${student.email}`);
+//       } catch (emailError) {
+//         console.error(`Failed to send email to ${student.email}:`, emailError);
+//       }
+//     }));
+
+//   } catch (error) {
+//     console.error('Error in email notification system:', error);
+//     throw error; // Propagate the error for the controller to handle
+//   }
+// }
+
+// // Updated notification function to work with createContent
+// export async function notifyStudentsNewContent(content) {
+//   try {
+//     const students = await Student.find({
+//       grade: content.grade,
+//       subjects: content.subject,
+//       ...(content.accessibleTo !== 'all' ? { _id: { $in: content.accessibleTo } } : {})
+//     }).select('_id email');
+
+//     // Create database notifications
+//     const notifications = students.map(student => ({
+//       recipient: student._id,
+//       recipientType: 'student',
+//       type: 'new_content',
+//       title: `New ${content.type} in ${content.subject}`,
+//       message: content.title,
+//       relatedContent: content._id,
+//       teacher: content.teacher
+//     }));
+
+//     await Notification.insertMany(notifications);
+
+//     // Send email notifications
+//     await sendEmailNotifications(students, {
+//       type: 'new_content',
+//       contentId: content._id
+//     }, content);
+
+//   } catch (error) {
+//     console.error('Error in notifyStudentsNewContent:', error);
+//     throw error;
+//   }
+// }

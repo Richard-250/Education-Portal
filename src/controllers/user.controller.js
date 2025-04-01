@@ -244,7 +244,7 @@ export const loginUser = async (req, res) => {
     }
   
     // Generate token for non-2FA login
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.role);
 
     res.cookie('tempToken', token, {
       httpOnly: true,
@@ -259,7 +259,7 @@ export const loginUser = async (req, res) => {
     user.lastLogin = Date.now();
     await user.save({ validateBeforeSave: false });
   
-    return res.status(200).json({
+     res.status(200).json({
       success: true,
       token,
       user: { 

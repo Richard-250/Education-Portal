@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import User from './user';
+import User from './user.js';
 
 // Student Schema (extends User)
 const StudentSchema = new mongoose.Schema({

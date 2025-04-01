@@ -1,5 +1,5 @@
 import { Router } from "express";
-import CloudinaryConfig from '../../config/cloudinary.js'
+import CloudinaryConfig from '../../config/cloudinary.js';
 import validateSignup from "../../validations/signup.js";
 import validateLogin from "../../validations/login.js";
 import { authenticate, restrictTo } from "../../middleware/auth.js";
