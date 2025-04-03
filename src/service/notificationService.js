@@ -1,5 +1,6 @@
 // notificationService.js
 import { Server } from 'socket.io';
+import Content from '../models/content.js';
 import Notification from '../models/notification.js'; // Assuming this is the path to your Notification model
 
 let io;
@@ -94,7 +95,7 @@ export const createNotification = async (params) => {
  * @param {boolean} persist - Whether to save the notification to database
  * @returns {Promise<boolean>} Success status
  */
-export const sendNotification = async (event, recipients, data, persist = true ) => { 
+export const sendNotification = async (event, recipients, data ) => { 
   try {
     const socketIO = getIO();
     const notificationPayload = {
@@ -109,44 +110,9 @@ export const sendNotification = async (event, recipients, data, persist = true )
         socketIO.to(recipient).emit(event, notificationPayload);
       });
 
-      // Persist notifications if required
-      // if (persist) {
-        
-      //   await Promise.all(recipients.map(async recipient => {
-      //     if (typeof recipient === 'string' && recipient.startsWith('user-')) {
-      //       console.log('reached there')
-      //       const userId = recipient.replace('user-', '');
-      //       await createNotification({
-      //         recipient: userId,
-      //         recipientType: data.recipientType || 'student', // default to student
-      //         type: data.type,
-      //         title: data.title,
-      //         message: data.message || `changes happened to ${data.type}`,
-      //         relatedContent: data.contentType,
-      //         teacher: data.teacherId,
-      //         metadata: data.metadata || {}
-      //       });
-      //     }
-      //   }));
-      // }
     } else {
       // If recipients is a string (single room/user or broadcast channel)
       socketIO.to(recipients).emit(event, notificationPayload);
-
-      // // Persist notification if required and recipient is a user
-      // if (persist && typeof recipients === 'string' ) {
-      //   const userId = recipients.replace('user-', '');
-      //   await createNotification({
-      //     recipient: userId,
-      //     recipientType: data.recipientType || 'student', // default to student
-      //     type: data.type,
-      //     title: data.title,
-      //     message: data.message,
-      //     relatedContent: data.contentId,
-      //     teacher: data.teacherId,
-      //     metadata: data.metadata || {}
-      //   });
-      // }
     }
     
     console.log(`Notification sent to ${Array.isArray(recipients) ? recipients.length + ' recipients' : recipients}`);
@@ -163,7 +129,12 @@ export const sendNotification = async (event, recipients, data, persist = true )
  * @param {boolean} persist - Whether to save notifications to database
  * @returns {Promise<boolean>} - Success status
  */
-export const notifyStudentsNewContent = async (content, persist = true) => {
+export const notifyStudentsNewContent = async (content) => {
+  //     const contents = await Content.findById( content._id )
+  //     // console.log('checkings: ', contents)
+  // if (!contents.isPublished) {
+  //   return 'first enable content publish'
+  // }
   try {
     // Determine which rooms should receive this notification
     const rooms = [];
@@ -201,7 +172,7 @@ export const notifyStudentsNewContent = async (content, persist = true) => {
     };
     
     // Send notification to each room
-     await sendNotification('notification', rooms, notificationData, persist = true);
+     await sendNotification('notification', rooms, notificationData);
     console.log('all done', 'notification data: ', notificationData)
    await createNotification(notificationData)
     console.log('notification saved successfully')
@@ -210,34 +181,6 @@ export const notifyStudentsNewContent = async (content, persist = true) => {
     return false;
   }
 };
-
-/**
- * Notify about published content
- * @param {object} content - Content object
- * @param {Array<string>} recipients - Array of user IDs
- * @param {boolean} persist - Whether to save notifications to database
- * @returns {Promise<boolean>} - Success status
- */
-export const notifyContentPublished = async (content, recipients, persist = true) => {
-  try {
-    const rooms = recipients.map(userId => `user-${userId}`);
-    
-    const notificationData = {
-      type: NotificationTypes.CONTENT_PUBLISHED,
-      title: 'Content Published',
-      message: `Your content "${content.title}" has been published`,
-      contentId: content._id,
-      contentType: content.contentType,
-      recipientType: 'teacher' // Assuming this is for teachers
-    };
-    
-    return await sendNotification('notification', rooms, notificationData, persist);
-  } catch (error) {
-    console.error('Failed to notify about published content:', error);
-    return false;
-  }
-};
-
 /**
  * Notify about updated content
  * @param {object} content - Content object

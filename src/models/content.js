@@ -105,7 +105,7 @@ const ContentSchema = new Schema({
   tags: [String],
   isPublished: {
     type: Boolean,
-    default: false
+    default: false,
   },
   publishedAt: {
     type: Date,

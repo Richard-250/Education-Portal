@@ -2,18 +2,13 @@ import express from 'express';
 const router = express.Router();
 import CloudinaryConfig from '../../config/cloudinary.js';
 import { restrictTo, authenticate } from '../../middleware/auth.js';
-import { createContent } from '../../controllers/content.controller.js';
+import { createContent, publishContent, getStudentContent } from '../../controllers/content.controller.js';
 
 // Teacher routes for content management
 router.use(authenticate);
 router.post('/create', restrictTo('teacher'), CloudinaryConfig.upload.single('file'), createContent);
-
-// router.put('/publish/:contentId', 
-//   authMiddleware, 
-//   roleMiddleware(['teacher']),
-//   param('contentId').isMongoId().withMessage('Invalid content ID'),
-//   publishContent
-// );
+router.get('/api/content', restrictTo('teacher'), getStudentContent);
+router.put('/api/publish/:contentId', restrictTo('teacher'), publishContent);
 
 // router.put('/update/:contentId', 
 //   authMiddleware, 

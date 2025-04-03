@@ -26,7 +26,8 @@ const NotificationSchema = new Schema({
       'message', 
       'assignment_due',
       'new_comment',
-      'comment_reply'
+      'comment_reply',
+      'content_published'
     ],
     required: true
   },
