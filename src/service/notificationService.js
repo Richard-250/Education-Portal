@@ -16,10 +16,7 @@ export const NotificationTypes = {
   ASSIGNMENT_DUE: 'assignment_due'
 };
 
-/**
- * Initialize the Socket.io server
- * @param {object} server - HTTP/HTTPS server instance
- */
+
 export const initializeSocketServer = (server) => {
   io = new Server(server, {
     cors: {
@@ -47,10 +44,6 @@ export const initializeSocketServer = (server) => {
   return io;
 };
 
-/**
- * Get the Socket.io instance
- * @returns {object} Socket.io server instance
- */
 export const getIO = () => {
   if (!io) {
     throw new Error('Socket.io not initialized. Call initializeSocketServer first.');
@@ -58,11 +51,6 @@ export const getIO = () => {
   return io;
 };
 
-/**
- * Create and save a notification in the database
- * @param {object} params - Notification parameters
- * @returns {Promise<object>} Created notification
- */
 export const createNotification = async (params) => {
     
   try {
@@ -87,14 +75,6 @@ export const createNotification = async (params) => {
   }
 };
 
-/**
- * Send notification to specific users and optionally save to database
- * @param {string} event - Event name
- * @param {Array|string} recipients - User IDs or room names to receive notification
- * @param {object} data - Notification data
- * @param {boolean} persist - Whether to save the notification to database
- * @returns {Promise<boolean>} Success status
- */
 export const sendNotification = async (event, recipients, data ) => { 
   try {
     const socketIO = getIO();
@@ -123,43 +103,27 @@ export const sendNotification = async (event, recipients, data ) => {
   }
 };
 
-/**
- * Notify students about new content
- * @param {object} content - Content object
- * @param {boolean} persist - Whether to save notifications to database
- * @returns {Promise<boolean>} - Success status
- */
 export const notifyStudentsNewContent = async (content) => {
-  //     const contents = await Content.findById( content._id )
-  //     // console.log('checkings: ', contents)
-  // if (!contents.isPublished) {
-  //   return 'first enable content publish'
-  // }
   try {
-    // Determine which rooms should receive this notification
+  
     const rooms = [];
     
-    // Add grade-specific room if content is for a specific grade
     if (content.grade && content.grade !== 'all') {
       rooms.push(`grade-${content.grade}`);
     }
     
-    // Add subject-specific room if applicable
     if (content.subject) {
       rooms.push(`subject-${content.subject}`);
     }
     
-    // If content is accessible to specific users, notify them individually
     if (content.accessibleTo && content.accessibleTo !== 'all' && Array.isArray(content.accessibleTo)) {
       rooms.push(...content.accessibleTo.map(userId => `user-${userId}`));
     }
     
-    // If no specific targets, broadcast to all students
     if (rooms.length === 0) {
       rooms.push('role-student');
     }
     
-    // Create notification payload
     const notificationData = {
       kind: NotificationTypes.NEW_CONTENT,
       title: 'New Content Available',
@@ -171,7 +135,6 @@ export const notifyStudentsNewContent = async (content) => {
       recipientType: 'student'
     };
     
-    // Send notification to each room
      await sendNotification('notification', rooms, notificationData);
     console.log('all done', 'notification data: ', notificationData)
    await createNotification(notificationData)
@@ -181,18 +144,26 @@ export const notifyStudentsNewContent = async (content) => {
     return false;
   }
 };
-/**
- * Notify about updated content
- * @param {object} content - Content object
- * @param {Array<string>} recipients - Array of user IDs or room names
- * @param {boolean} persist - Whether to save notifications to database
- * @returns {Promise<boolean>} - Success status
- */
-export const notifyContentUpdated = async (content, recipients, persist = true) => {
+
+export const notifyContentUpdated = async (content) => {
   try {
-    const rooms = Array.isArray(recipients) ? 
-      recipients.map(r => r.startsWith('user-') || r.startsWith('role-') || r.startsWith('grade-') ? r : `user-${r}`) :
-      [recipients];
+    const rooms = [];
+    
+    if (content.grade && content.grade !== 'all') {
+      rooms.push(`grade-${content.grade}`);
+    }
+    
+    if (content.subject) {
+      rooms.push(`subject-${content.subject}`);
+    }
+    
+    if (content.accessibleTo && content.accessibleTo !== 'all' && Array.isArray(content.accessibleTo)) {
+      rooms.push(...content.accessibleTo.map(userId => `user-${userId}`));
+    }
+    
+    if (rooms.length === 0) {
+      rooms.push('role-student');
+    }
     
     const notificationData = {
       type: NotificationTypes.CONTENT_UPDATED,
@@ -203,7 +174,7 @@ export const notifyContentUpdated = async (content, recipients, persist = true) 
       recipientType: 'student' // Default to student, can be overridden
     };
     
-    return await sendNotification('notification', rooms, notificationData, persist);
+    return await sendNotification('notification', rooms, notificationData);
   } catch (error) {
     console.error('Failed to notify about updated content:', error);
     return false;

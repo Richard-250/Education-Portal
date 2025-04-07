@@ -34,7 +34,7 @@ const storage = new CloudinaryStorage({
     folder: determineFileCategory(file.mimetype, file.originalname),
     allowed_formats: [...FILE_TYPES.IMAGE, ...FILE_TYPES.VIDEO, ...FILE_TYPES.AUDIO, ...FILE_TYPES.DOCUMENT],
     public_id: `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1E9)}`,
-    transformation: file.mimetype.startsWith('image/') ? [{ width: 800, height: 600, crop: 'limit' }] : []
+    // transformation: file.mimetype.startsWith('image/') ? [{ width: 800, height: 600, crop: 'limit' }] : []
   })
 });
 
@@ -59,9 +59,9 @@ const CloudinaryService = {
         resource_type: getResourceType(file.mimetype),
         public_id: `${file.fieldname || 'file'}-${Date.now()}`,
         // Apply transformations only for images
-        ...(file.mimetype.startsWith('image/') && {
-          transformation: [{ width: 800, height: 600, crop: 'limit' }]
-        })
+        // ...(file.mimetype.startsWith('image/') && {
+        //   transformation: [{ width: 800, height: 600, crop: 'limit' }]
+        // })
       });
       return result;
     } catch (error) {
@@ -82,11 +82,10 @@ const CloudinaryService = {
 };
 
 // Helper function to determine the correct resource type
-function getResourceType(mimeType) {
+ export function getResourceType(mimeType) {
   if (mimeType.startsWith('image/')) return 'image';
-  if (mimeType.startsWith('video/')) return 'video';
-  if (mimeType === 'application/javascript' || mimeType === 'text/css') return 'raw';
-  return 'raw'; // Default to 'raw' for unsupported types
+  if (mimeType.startsWith('video/') || mimeType.startsWith('audio/')) return 'video';
+  return 'auto'; // Handles PDFs, docs, etc.
 }
 
 export default { cloudinary, upload, CloudinaryService, FILE_TYPES };

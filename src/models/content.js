@@ -12,7 +12,7 @@ const CommentSchema = new Schema({
     type: String,
     // enum: ['Teacher', 'Student'],
     // message: '{VALUE} is not a valid role',
-    required: true,
+    // required: true,
     // set: v => v.charAt(0).toUpperCase() + v.slice(1).toLowerCase() // Capitalize first letter
   },
   text: {
@@ -30,7 +30,7 @@ const CommentSchema = new Schema({
     userType: {
       type: String,
       // enum: ['Teacher', 'Student'],
-      required: true
+      // required: true
     },
     text: {
       type: String,
@@ -94,8 +94,8 @@ const ContentSchema = new Schema({
     default: null
   },
   teacher: {
-    type: Schema.Types.ObjectId,
-    ref: 'Teacher',
+    type:  mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
   },
   students: [{

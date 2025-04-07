@@ -185,13 +185,12 @@ export const getUserNotifications = async (req, res) => {
     // Get total count of notifications for pagination info
     const totalCount = await Notification.countDocuments({
       recipient: user.userId,
-      recipientType: user.userType.toLowerCase(), // 'student' or 'teacher'
     });
 
     // Get notifications sorted by newest first, with pagination
     const notifications = await Notification.find({
       recipient: user.userId,
-      recipientType: user.userType.toLowerCase(),
+      // recipientType: user.userType.toLowerCase(),
     })
       .sort({ createdAt: -1 }) // Newest first
       .skip(skip)
@@ -272,7 +271,7 @@ export const markAllNotificationsAsRead = async (req, res) => {
     const result = await Notification.updateMany(
       {
         recipient: user.userId,
-        recipientType: user.userType.toLowerCase(),
+        // recipientType: user.userType.toLowerCase(),
         isRead: false
       },
       { isRead: true }

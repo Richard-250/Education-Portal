@@ -1,13 +1,17 @@
 import Content from "../models/content.js";
+// import fs from 'fs';
 import mongoose from "mongoose";
-import cloudinary from "cloudinary";
+// import cloudinary from "cloudinary";
 import CloudinaryConfig from "../config/cloudinary.js";
-import { notifyStudentsNewContent, sendNotification, createNotification } from "../service/notificationService.js";
+import { getResourceType } from "../config/cloudinary.js";
+import { notifyStudentsNewContent, sendNotification, createNotification, notifyContentUpdated } from "../service/notificationService.js";
 
-const cloudinaryV2 = cloudinary.v2;
+// const cloudinaryV2 = cloudinary.v2;
 export const createContent = async (req, res) => {
+
+  const ALLOWED_SUBJECTS = ['math', 'science', 'history', 'literature', 'art'];
   try {
-    // 1. Destructure and validate required fields
+    //  Destructure and validate required fields
     const { 
       title,
       description,
@@ -15,8 +19,8 @@ export const createContent = async (req, res) => {
       grade,
       contentType,
       // Optional fields
-      kind = 'lesson',
-      type = 'material',
+      kind = 'material',
+      type = 'lecture',
       tags = [],
       accessibleTo = 'all',
       message = ''
@@ -29,7 +33,7 @@ export const createContent = async (req, res) => {
       });
     }
 
-    // 2. Validate content type and file presence
+    //  Validate content type and file presence
     if (contentType !== 'text' && !req.file) {
       return res.status(400).json({
         success: false,
@@ -37,7 +41,7 @@ export const createContent = async (req, res) => {
       });
     }
 
-    // 3. Handle file upload (if applicable)
+    //  Handle file upload (if applicable)
     let fileUrl = null;
     let cloudinaryPublicId = null;
 
@@ -51,10 +55,6 @@ export const createContent = async (req, res) => {
         fileUrl = uploadResult.secure_url;
         cloudinaryPublicId = uploadResult.public_id;
 
-        // Clean up temp file after upload
-        fs.unlink(req.file.path, (err) => {
-          if (err) console.error('Temp file cleanup failed:', err);
-        });
       } catch (uploadError) {
         console.error('Cloudinary upload failed:', uploadError);
         return res.status(500).json({
@@ -63,8 +63,37 @@ export const createContent = async (req, res) => {
         });
       }
     }
+   // validate allowed subjects
+    if (!ALLOWED_SUBJECTS.includes(subject.trim().toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid subject. Allowed values: ${ALLOWED_SUBJECTS.join(', ')}`,
+        allowedSubjects: ALLOWED_SUBJECTS
+      });
+    }
+    // validate grade if it is number
+    const gradeNum = parseInt(grade);
+    if (isNaN(gradeNum) || gradeNum < 1 || gradeNum > 12) {
+      return res.status(400).json({
+        success: false,
+        message: 'Grade must be a number between 1 - 12'
+      });
+    }
 
-    // 4. Create and save content
+    const duplicateContent = await Content.findOne({ 
+      title: { $regex: new RegExp(`^${title.trim()}$`, 'i') },
+      teacher: req.user._id
+    });
+
+    if (duplicateContent) {
+      return res.status(409).json({
+        success: false,
+        message: 'You already have content with this title',
+        existingContentId: duplicateContent._id
+      });
+    }
+
+    //  Create and save content
     const newContent = new Content({
       title,
       description,
@@ -87,12 +116,12 @@ export const createContent = async (req, res) => {
 
     await newContent.save();
 
-    // 5. Notifications (fire-and-forget)
+    //  Notifications (fire-and-forget)
     notifyStudentsNewContent(newContent).catch(err => 
       console.error('Notification failed:', err)
     );
 
-    // 6. Success response
+    //  Success response
     res.status(201).json({
       success: true,
       message: 'Content created successfully',
@@ -108,6 +137,7 @@ export const createContent = async (req, res) => {
     });
   }
 };
+
 export const publishContent = async (req, res) => {
   try {
     const { contentId } = req.params;
@@ -192,6 +222,7 @@ export const publishContent = async (req, res) => {
     });
   }
 };
+
 export const getStudentContent = async (req, res) => {
   try {
     const { subject, grade, search, page = 1, limit = 5 } = req.query;
@@ -281,11 +312,48 @@ export const getStudentContent = async (req, res) => {
 // Get content for teachers (with more details)
 export const getTeacherContent = async (req, res) => {
   try {
-    const contents = await Content.find({
-      teacher: req.user._id
-    }).sort({ createdAt: -1 });
+    const { search, grade,  page = 1, limit = 5 } = req.query;
+    const skip = (page - 1) * limit;
+    
+    if (grade && grade.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Grade cannot be empty.',
+      });
+    }
 
-    res.json(contents);
+    // Build query for teacher's content
+    const query = {
+      teacher: req.user._id
+    };
+    
+    // Add search functionality (can search across all content including unpublished)
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { subject: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Fetch paginated content
+    const contents = await Content.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    // Get total count for pagination
+    const total = await Content.countDocuments(query);
+
+    res.json({
+      contents,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({
       message: 'Failed to fetch teacher content',
@@ -294,43 +362,175 @@ export const getTeacherContent = async (req, res) => {
   }
 };
 
-// // Update content details
-// export const updateContent = async (req, res) => {
-//   try {
-//     const { contentId } = req.params;
-//     const updateData = req.body;
+export const getAdminAllContent = async (req, res) => {
+  try {
+    const { search, subject, grade, isPublished, page = 1, limit = 5 } = req.query;
+    const skip = (page - 1) * limit;
+    
+    // Build query for all content
+    const query = {
+      teacher: req.user._id
+    };
+    
+    // Add optional filters
+    if (subject?.trim()) query.subject = subject.trim();
+    if (grade?.trim()) query.grade = grade.trim();
+    if (isPublished !== undefined) query.isPublished = isPublished === 'true';
+    
+    // Add search functionality
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { subject: { $regex: search, $options: 'i' } },
+      ];
+    }
 
-//     // Prevent changing certain fields
-//     delete updateData.teacher;
-//     delete updateData.isPublished;
-//     delete updateData.publishedAt;
+    // Fetch paginated content with full details
+    const contents = await Content.find(query)
+    .populate("teacher", "firstName lastName profilePhoto, email")// Include teacher details
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    // Get total count for pagination
+    const total = await Content.countDocuments(query);
 
-//     const updatedContent = await Content.findOneAndUpdate(
-//       {
-//         _id: contentId,
-//         teacher: req.user._id
-//       },
-//       updateData,
-//       { new: true }
-//     );
+    res.json({
+      contents,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to fetch content',
+      error: error.message
+    });
+  }
+};
 
-//     if (!updatedContent) {
-//       return res.status(404).json({
-//         message: 'Content not found or unauthorized'
-//       });
-//     }
+// Update content details
+export const updateContent = async (req, res) => {
+  try {
+    const { contentId } = req.params;
+    const updateData = req.body;
 
-//     // Notify students about content update
-//     await NotificationService.notifyStudentsContentUpdated(updatedContent);
+    // Find the existing content first
+    const existingContent = await Content.findOne({
+      _id: contentId,
+      teacher: req.user._id
+    });
 
-//     res.json({
-//       message: 'Content updated successfully',
-//       content: updatedContent
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       message: 'Failed to update content',
-//       error: error.message
-//     });
+    if (!existingContent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Content not found or unauthorized'
+      });
+    }
+
+    // Handle file upload if a new file is provided
+    if (req.file) {
+      // First delete the old file if it exists
+      if (existingContent.cloudinaryPublicId) {
+        try {
+          const resourceType = getResourceType(existingContent.contentType);
+          await CloudinaryConfig.CloudinaryService.deleteFile(
+            existingContent.cloudinaryPublicId,
+            resourceType
+          );
+        } catch (deleteError) {
+          console.error('Failed to delete old file:', deleteError);
+          // Continue with update even if deletion fails
+        }
+      }
+
+      // Upload new file
+      try {
+        const uploadResult = await CloudinaryConfig.CloudinaryService.uploadFile({
+          path: req.file.path,
+          mimetype: req.file.mimetype,
+          originalname: req.file.originalname,
+        });
+        updateData.fileUrl = uploadResult.secure_url;
+        updateData.cloudinaryPublicId = uploadResult.public_id;
+      } catch (uploadError) {
+        console.error('Cloudinary upload failed:', uploadError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to upload new file'
+        });
+      }
+    } else if (updateData.contentType === 'text') {
+      // If updating to text content, remove any existing file
+      if (existingContent.cloudinaryPublicId) {
+        try {
+          const resourceType = getResourceType(existingContent.contentType);
+          await CloudinaryConfig.CloudinaryService.deleteFile(
+            existingContent.cloudinaryPublicId,
+            resourceType
+          );
+        } catch (deleteError) {
+          console.error('Failed to delete old file:', deleteError);
+        }
+      }
+      updateData.fileUrl = null;
+      updateData.cloudinaryPublicId = null;
+    }
+
+    // Prevent changing certain fields
+    delete updateData.teacher;
+    delete updateData.isPublished;
+    delete updateData.publishedAt;
+
+    const updatedContent = await Content.findOneAndUpdate(
+      { _id: contentId, teacher: req.user._id },
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedContent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Content not found or unauthorized'
+      });
+    }
+
+    // Notify students about content update (fire-and-forget)
+    notifyContentUpdated(updatedContent).catch(err => 
+      console.error('Notification failed:', err)
+    );
+
+    res.json({
+      success: true,
+      message: 'Content updated successfully',
+      data: updatedContent
+    });
+
+  } catch (error) {
+    console.error('Content update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update content',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Helper function to determine resource type from content type
+// function getResourceType(contentType) {
+//   switch(contentType) {
+//     case 'image':
+//       return 'image';
+//     case 'video':
+//       return 'video';
+//     case 'pdf':
+//     case 'document':
+//       return 'raw';
+//     default:
+//       return 'auto';
 //   }
-// };
+// }
