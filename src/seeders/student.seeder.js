@@ -46,6 +46,25 @@ const students = [
     },
     primaryLanguage: 'Mandarin'
   },
+  {
+    firstName: 'Sophia',
+    lastName: 'Rodriguez',
+    email: 'sophia.rodriguez@school.edu',
+    password: 'student123',
+    phoneNumber: '5550304050',
+    studentId: generateStudentId(),
+    grade: '9',
+    dateOfBirth: new Date('2008-02-10'),
+    academicRecords: {
+      GPA: 3.2,
+      academicStanding: 'good'
+    },
+    primaryLanguage: 'Spanish',
+    specialNeeds: {
+      hasSpecialNeeds: true,
+      details: 'Requires additional test time'
+    }
+  }
 ];
 
 const seedStudents = async () => {
